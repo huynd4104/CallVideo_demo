@@ -4,15 +4,21 @@ import '../models/call_session.dart';
 class CallService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<String> startCall(CallSession session) async {
+  Future<String> createCall(CallSession session) async {
     try {
       DocumentReference docRef = await _firestore
           .collection('calls')
           .add(session.toMap());
       return docRef.id;
     } catch (e) {
-      throw Exception('Lỗi bắt đầu cuộc gọi: $e');
+      throw Exception('Lỗi tạo cuộc gọi: $e');
     }
+  }
+
+  Future<CallSession?> getCall(String docId) async {
+    final doc = await _firestore.collection('calls').doc(docId).get();
+    if (!doc.exists) return null;
+    return CallSession.fromMap(doc.data() as Map<String, dynamic>, doc.id);
   }
 
   Future<void> updateCallStatus(String docId, String status) async {
@@ -31,15 +37,12 @@ class CallService {
         .collection('calls')
         .where('receiverId', isEqualTo: currentUserId)
         .where('status', isEqualTo: 'ringing')
-        .orderBy('createdAt', descending: true)
-        .limit(1)
         .snapshots()
         .map((snapshot) {
           if (snapshot.docs.isEmpty) return null;
-          return CallSession.fromMap(
-            snapshot.docs.first.data(),
-            snapshot.docs.first.id,
-          );
+          // Trả về cuộc gọi mới nhất
+          final doc = snapshot.docs.first;
+          return CallSession.fromMap(doc.data(), doc.id);
         });
   }
 

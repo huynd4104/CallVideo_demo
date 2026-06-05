@@ -1,11 +1,16 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
+import '../models/call_session.dart';
 import '../models/chat_message.dart';
 import '../models/demo_user.dart';
+import '../services/call_service.dart';
 import '../services/chat_service.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input.dart';
 import 'call_screen.dart';
+import 'incoming_call_dialog.dart';
+import 'outgoing_call_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final DemoUser currentUser;
@@ -18,6 +23,10 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final ChatService _chatService = ChatService();
+  final CallService _callService = CallService();
+  StreamSubscription? _incomingCallSubscription;
+  bool _isShowingIncomingDialog = false;
+  String? _lastCallDocId;
 
   late final DemoUser _otherUser;
 
@@ -28,27 +37,92 @@ class _ChatScreenState extends State<ChatScreen> {
     _otherUser = widget.currentUser.role == 'patient'
         ? DemoUser.doctor()
         : DemoUser.patient();
+
+    _listenToIncomingCalls();
   }
 
-  String _buildCallId() {
-    final participantIds = [widget.currentUser.id, _otherUser.id]..sort();
+  void _listenToIncomingCalls() {
+    _incomingCallSubscription = _callService
+        .listenToIncomingCall(widget.currentUser.id)
+        .listen((session) {
+          if (session == null || !mounted) return;
+          if (_isShowingIncomingDialog) return;
+          if (_lastCallDocId == session.docId) return;
 
-    return 'call_${participantIds.join('_')}';
+          _showIncomingCallDialog(session);
+        });
+  }
+
+  void _showIncomingCallDialog(CallSession session) {
+    _isShowingIncomingDialog = true;
+    _lastCallDocId = session.docId;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => IncomingCallDialog(
+        session: session,
+        onAccept: () {
+          _isShowingIncomingDialog = false;
+          Navigator.pop(context); // Đóng dialog
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CallScreen(
+                currentUser: widget.currentUser,
+                otherUser: DemoUser(
+                  id: session.callerId,
+                  name: session.callerName,
+                  role: widget.currentUser.role == 'patient'
+                      ? 'doctor'
+                      : 'patient',
+                ),
+                isVideo: session.type == 'video',
+                callId: session.docId,
+                callDocId: session.docId,
+              ),
+            ),
+          );
+        },
+        onReject: () {
+          _isShowingIncomingDialog = false;
+          Navigator.pop(context); // Đóng dialog
+        },
+      ),
+    );
   }
 
   Future<void> _startCall(bool isVideo) async {
-    final callId = _buildCallId();
+    final session = CallSession(
+      callId: '', // Sẽ dùng docId sau khi tạo
+      callerId: widget.currentUser.id,
+      callerName: widget.currentUser.name,
+      receiverId: _otherUser.id,
+      receiverName: _otherUser.name,
+      type: isVideo ? 'video' : 'audio',
+      status: 'ringing',
+    );
+
+    final docId = await _callService.createCall(session);
+
+    if (!mounted) return;
 
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => CallScreen(
+        builder: (_) => OutgoingCallScreen(
           currentUser: widget.currentUser,
           otherUser: _otherUser,
           isVideo: isVideo,
-          callId: callId,
+          callDocId: docId,
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _incomingCallSubscription?.cancel();
+    super.dispose();
   }
 
   @override

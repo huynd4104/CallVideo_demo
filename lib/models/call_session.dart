@@ -8,7 +8,8 @@ class CallSession {
   final String receiverId;
   final String receiverName;
   final String type; // 'audio' or 'video'
-  final String status; // 'ringing', 'accepted', 'rejected', 'ended'
+  final String
+  status; // 'ringing', 'accepted', 'rejected', 'cancelled', 'ended'
   final DateTime? createdAt;
   final DateTime? updatedAt;
 

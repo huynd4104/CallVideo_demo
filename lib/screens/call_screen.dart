@@ -10,7 +10,7 @@ class CallScreen extends StatefulWidget {
   final DemoUser otherUser;
   final bool isVideo;
   final String callId;
-  final String? callDocId;
+  final String callDocId;
 
   const CallScreen({
     super.key,
@@ -18,7 +18,7 @@ class CallScreen extends StatefulWidget {
     required this.otherUser,
     required this.isVideo,
     required this.callId,
-    this.callDocId,
+    required this.callDocId,
   });
 
   @override
@@ -27,16 +27,16 @@ class CallScreen extends StatefulWidget {
 
 class _CallScreenState extends State<CallScreen> {
   final CallService _callService = CallService();
+  bool _isEnded = false;
 
-  @override
-  void dispose() {
-    final documentId = widget.callDocId;
-
-    if (documentId != null) {
-      _callService.updateCallStatus(documentId, 'ended');
+  Future<void> _endCall() async {
+    if (_isEnded) return;
+    _isEnded = true;
+    try {
+      await _callService.updateCallStatus(widget.callDocId, 'ended');
+    } catch (e) {
+      debugPrint('Error ending call: $e');
     }
-
-    super.dispose();
   }
 
   @override
@@ -44,6 +44,13 @@ class _CallScreenState extends State<CallScreen> {
     final config = widget.isVideo
         ? ZegoUIKitPrebuiltCallConfig.oneOnOneVideoCall()
         : ZegoUIKitPrebuiltCallConfig.oneOnOneVoiceCall();
+
+    final events = ZegoUIKitPrebuiltCallEvents(
+      onCallEnd: (event, defaultAction) {
+        _endCall();
+        defaultAction.call();
+      },
+    );
 
     return Scaffold(
       body: SafeArea(
@@ -54,6 +61,7 @@ class _CallScreenState extends State<CallScreen> {
           userName: widget.currentUser.name,
           callID: widget.callId,
           config: config,
+          events: events,
         ),
       ),
     );
