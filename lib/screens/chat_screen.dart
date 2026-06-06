@@ -60,33 +60,39 @@ class _ChatScreenState extends State<ChatScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => IncomingCallDialog(
+      builder: (dialogContext) => IncomingCallDialog(
         session: session,
         onAccept: () {
           _isShowingIncomingDialog = false;
-          Navigator.pop(context); // Đóng dialog
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => CallScreen(
-                currentUser: widget.currentUser,
-                otherUser: DemoUser(
-                  id: session.callerId,
-                  name: session.callerName,
-                  role: widget.currentUser.role == 'patient'
-                      ? 'doctor'
-                      : 'patient',
+          Navigator.pop(dialogContext); // Đóng dialog bằng dialogContext
+          
+          // Tránh xung đột hiệu ứng (transition) giữa đóng dialog và mở màn hình call
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) {
+              Navigator.push(
+                context, // Sử dụng context của ChatScreen (ngoài) để push CallScreen
+                MaterialPageRoute(
+                  builder: (_) => CallScreen(
+                    currentUser: widget.currentUser,
+                    otherUser: DemoUser(
+                      id: session.callerId,
+                      name: session.callerName,
+                      role: widget.currentUser.role == 'patient'
+                          ? 'doctor'
+                          : 'patient',
+                    ),
+                    isVideo: session.type == 'video',
+                    callId: session.docId,
+                    callDocId: session.docId,
+                  ),
                 ),
-                isVideo: session.type == 'video',
-                callId: session.docId,
-                callDocId: session.docId,
-              ),
-            ),
-          );
+              );
+            }
+          });
         },
         onReject: () {
           _isShowingIncomingDialog = false;
-          Navigator.pop(context); // Đóng dialog
+          Navigator.pop(dialogContext); // Đóng dialog bằng dialogContext
         },
       ),
     );

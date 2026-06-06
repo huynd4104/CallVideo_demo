@@ -40,7 +40,20 @@ class _CallScreenState extends State<CallScreen> {
   }
 
   @override
+  void dispose() {
+    _endCall();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    debugPrint('=== ZEGO CALL SCREEN ===');
+    debugPrint('Room ID / Call ID: ${widget.callId}');
+    debugPrint('Current User ID: ${widget.currentUser.id} (Name: ${widget.currentUser.name})');
+    debugPrint('Other User ID: ${widget.otherUser.id} (Name: ${widget.otherUser.name})');
+    debugPrint('Is Video Call: ${widget.isVideo}');
+    debugPrint('========================');
+
     final config = widget.isVideo
         ? ZegoUIKitPrebuiltCallConfig.oneOnOneVideoCall()
         : ZegoUIKitPrebuiltCallConfig.oneOnOneVoiceCall();

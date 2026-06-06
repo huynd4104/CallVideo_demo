@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../models/call_session.dart';
 import '../models/demo_user.dart';
 import '../services/call_service.dart';
 import 'call_screen.dart';
